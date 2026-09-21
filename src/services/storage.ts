@@ -4,6 +4,7 @@ import type {
   MedicationLog,
   MedicationPlan,
   MedicalRecord,
+  Prescription,
 } from '../types'
 
 /**
@@ -16,6 +17,7 @@ const KEYS = {
   plans: 'fh_plans',
   logs: 'fh_logs',
   records: 'fh_records',
+  prescriptions: 'fh_prescriptions',
   achievements: 'fh_achievements',
 } as const
 
@@ -47,6 +49,9 @@ export const StorageService = {
 
   loadRecords: (): MedicalRecord[] => read(KEYS.records, []),
   saveRecords: (v: MedicalRecord[]) => write(KEYS.records, v),
+
+  loadPrescriptions: (): Prescription[] => read(KEYS.prescriptions, []),
+  savePrescriptions: (v: Prescription[]) => write(KEYS.prescriptions, v),
 
   loadAchievements: (): Record<string, number> => read(KEYS.achievements, {}),
   saveAchievements: (v: Record<string, number>) => write(KEYS.achievements, v),

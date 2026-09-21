@@ -97,6 +97,40 @@ export interface MedicalRecord {
   attachments: string[]
 }
 
+/** A prescription entry filed in the prescription archive. */
+export interface Prescription {
+  id: string
+  memberId: string
+  medicineName: string
+  dosage: string
+  startDate: string
+  endDate: string
+  hospital: string
+  /** Linked home-inventory medicine (optional; prescribed drugs are not always in stock). */
+  medicineId: string
+  /** Linked medical visit record. */
+  recordId: string
+  remark: string
+  createdAt: number
+}
+
+/** Link status of a prescription against the referenced medicine / medical record. */
+export type PrescriptionLinkStatus =
+  | 'active'
+  | 'medicine_expired'
+  | 'medicine_missing'
+  | 'record_missing'
+
+/** A prescription enriched with resolved relation data for display. */
+export interface PrescriptionWithStatus extends Prescription {
+  status: PrescriptionLinkStatus
+  statusText: string
+  /** False when the medication cycle (endDate) is over, independent of link health. */
+  inCycle: boolean
+  medicine?: Medicine
+  record?: MedicalRecord
+}
+
 /** A single dose due today, resolved from a plan + member + medicine. */
 export interface TodayDose {
   planId: string

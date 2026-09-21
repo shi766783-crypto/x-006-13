@@ -10,6 +10,8 @@ import type {
   Medicine,
   MedicationLog,
   MedicationPlan,
+  Prescription,
+  PrescriptionWithStatus,
   TodayDose,
 } from '../types'
 import { evaluateAchievements } from '../utils/achievements'
@@ -23,6 +25,7 @@ interface FamilyState {
   plans: MedicationPlan[]
   logs: MedicationLog[]
   records: MedicalRecord[]
+  prescriptions: Prescription[]
   unlockedAchievements: Record<string, number>
 }
 
@@ -33,6 +36,7 @@ function loadState(): FamilyState {
     plans: StorageService.loadPlans(),
     logs: StorageService.loadLogs(),
     records: StorageService.loadRecords(),
+    prescriptions: StorageService.loadPrescriptions(),
     unlockedAchievements: StorageService.loadAchievements(),
   }
 }
@@ -63,6 +67,7 @@ function createStore() {
     StorageService.savePlans(state.plans)
     StorageService.saveLogs(state.logs)
     StorageService.saveRecords(state.records)
+    StorageService.savePrescriptions(state.prescriptions)
     StorageService.saveAchievements(state.unlockedAchievements)
   }
 
@@ -83,6 +88,7 @@ function createStore() {
     state.plans = state.plans.filter((p) => p.memberId !== id)
     state.logs = state.logs.filter((l) => l.memberId !== id)
     state.records = state.records.filter((r) => r.memberId !== id)
+    state.prescriptions = state.prescriptions.filter((p) => p.memberId !== id)
     commit()
   }
 
@@ -177,6 +183,27 @@ function createStore() {
     commit()
   }
 
+  // ---- prescription archive ----
+  function addPrescription(prescription: Omit<Prescription, 'id' | 'createdAt'>) {
+    state.prescriptions.push({ ...prescription, id: uid(), createdAt: Date.now() })
+    commit()
+  }
+
+  function updatePrescription(id: string, patch: Partial<Prescription>) {
+    const prescription = state.prescriptions.find((p) => p.id === id)
+    if (prescription) Object.assign(prescription, patch)
+    commit()
+  }
+
+  function deletePrescription(id: string) {
+    state.prescriptions = state.prescriptions.filter((p) => p.id !== id)
+    commit()
+  }
+
+  function getRecord(id: string): MedicalRecord | undefined {
+    return state.records.find((r) => r.id === id)
+  }
+
   // ---- derived state ----
   const expiredMedicines = computed(() =>
     state.medicines.filter((m) => daysUntil(m.expiryDate) < 0),
@@ -249,6 +276,51 @@ function createStore() {
     return formatDate(max)
   })
 
+  /**
+   * Prescriptions resolved against the linked medicine / medical record.
+   * Broken or stale links are surfaced as an explicit status instead of
+   * silently disappearing.
+   */
+  const prescriptionsWithStatus = computed<PrescriptionWithStatus[]>(() => {
+    const today = todayStr()
+    return state.prescriptions
+      .map((p) => {
+        const medicine = p.medicineId
+          ? state.medicines.find((m) => m.id === p.medicineId)
+          : undefined
+        const record = state.records.find((r) => r.id === p.recordId)
+        const inCycle = !p.endDate || p.endDate >= today
+
+        let status: PrescriptionWithStatus['status'] = 'active'
+        let statusText = inCycle ? '服用中' : '服用周期已结束'
+        if (p.medicineId && !medicine) {
+          status = 'medicine_missing'
+          statusText = '关联药品已删除'
+        } else if (medicine && daysUntil(medicine.expiryDate) < 0) {
+          status = 'medicine_expired'
+          statusText = `关联药品已过期（${formatDate(medicine.expiryDate)}）`
+        } else if (!record) {
+          status = 'record_missing'
+          statusText = '关联就医记录已删除'
+        }
+
+        return {
+          ...p,
+          status,
+          statusText,
+          inCycle,
+          medicine,
+          record,
+        }
+      })
+      .sort((a, b) => b.createdAt - a.createdAt)
+  })
+
+  /** Prescriptions whose linked medicine / record is gone or the medicine has expired. */
+  const invalidPrescriptions = computed(() =>
+    prescriptionsWithStatus.value.filter((p) => p.status !== 'active'),
+  )
+
   const stats = computed(() => ({
     memberCount: state.members.length,
     medicineCount: state.medicines.length,
@@ -278,6 +350,10 @@ function createStore() {
     logDose,
     addRecord,
     deleteRecord,
+    getRecord,
+    addPrescription,
+    updatePrescription,
+    deletePrescription,
     // derived
     expiredMedicines,
     expiringMedicines,
@@ -286,6 +362,8 @@ function createStore() {
     achievements,
     healthScore,
     lastRecordDate,
+    prescriptionsWithStatus,
+    invalidPrescriptions,
     stats,
   })
 }

@@ -5,9 +5,19 @@ import MembersView from './views/MembersView.vue'
 import MedicinesView from './views/MedicinesView.vue'
 import MedicationView from './views/MedicationView.vue'
 import RecordsView from './views/RecordsView.vue'
+import PrescriptionsView from './views/PrescriptionsView.vue'
 import ProfileView from './views/ProfileView.vue'
+import type { MedicalRecord } from './types'
+import { useFamilyStore } from './stores/useFamilyStore'
 
-type ViewName = 'home' | 'members' | 'medicines' | 'medication' | 'records' | 'profile'
+type ViewName =
+  | 'home'
+  | 'members'
+  | 'medicines'
+  | 'medication'
+  | 'records'
+  | 'prescriptions'
+  | 'profile'
 
 const navItems: { key: ViewName; label: string; icon: string }[] = [
   { key: 'home', label: '首页', icon: '🏠' },
@@ -15,6 +25,7 @@ const navItems: { key: ViewName; label: string; icon: string }[] = [
   { key: 'medicines', label: '药品库存', icon: '💊' },
   { key: 'medication', label: '用药提醒', icon: '⏰' },
   { key: 'records', label: '就医记录', icon: '🏥' },
+  { key: 'prescriptions', label: '处方归档', icon: '📄' },
   { key: 'profile', label: '个人中心', icon: '🏆' },
 ]
 
@@ -24,11 +35,28 @@ const views: Record<ViewName, Component> = {
   medicines: MedicinesView,
   medication: MedicationView,
   records: RecordsView,
+  prescriptions: PrescriptionsView,
   profile: ProfileView,
 }
 
+const store = useFamilyStore()
 const currentView = ref<ViewName>('home')
 const activeView = computed(() => views[currentView.value])
+
+// Cross-page hand-off: a record to prefill when filing a prescription.
+const prefillRecord = ref<MedicalRecord | null>(null)
+// A record id the records page should scroll to / highlight after navigation.
+const focusRecordId = ref<string>('')
+
+function filePrescription(record: MedicalRecord) {
+  prefillRecord.value = record
+  currentView.value = 'prescriptions'
+}
+
+function openRecord(recordId: string) {
+  focusRecordId.value = recordId
+  currentView.value = 'records'
+}
 </script>
 
 <template>
@@ -49,11 +77,28 @@ const activeView = computed(() => views[currentView.value])
         >
           <span class="nav-icon">{{ item.icon }}</span>
           <span>{{ item.label }}</span>
+          <span
+            v-if="item.key === 'prescriptions' && store.invalidPrescriptions.length"
+            class="nav-badge"
+          >
+            {{ store.invalidPrescriptions.length }}
+          </span>
         </button>
       </nav>
     </aside>
     <main class="main">
-      <component :is="activeView" />
+      <RecordsView
+        v-if="currentView === 'records'"
+        :focus-record-id="focusRecordId"
+        @file-prescription="filePrescription"
+      />
+      <PrescriptionsView
+        v-else-if="currentView === 'prescriptions'"
+        :prefill-record="prefillRecord"
+        @open-record="openRecord"
+        @consume-prefill="prefillRecord = null"
+      />
+      <component :is="activeView" v-else />
     </main>
   </div>
 </template>
@@ -118,6 +163,19 @@ const activeView = computed(() => views[currentView.value])
 .nav-icon {
   font-size: 18px;
 }
+.nav-badge {
+  margin-left: auto;
+  background: var(--danger-color);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 9px;
+  padding: 0 5px;
+}
 .main {
   flex: 1;
   padding: 28px;
@@ -145,6 +203,9 @@ const activeView = computed(() => views[currentView.value])
   }
   .nav-item {
     white-space: nowrap;
+  }
+  .nav-badge {
+    margin-left: 4px;
   }
   .main {
     padding: 16px;

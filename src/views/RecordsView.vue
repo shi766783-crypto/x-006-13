@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import RecordForm from '../components/record/RecordForm.vue'
 import BaseModal from '../components/ui/BaseModal.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
@@ -8,11 +8,15 @@ import type { MedicalRecord } from '../types'
 import { formatDate } from '../utils/date'
 import { formatCurrency } from '../utils/format'
 
+const props = defineProps<{ focusRecordId?: string }>()
+const emit = defineEmits<{ (e: 'file-prescription', record: MedicalRecord): void }>()
+
 const store = useFamilyStore()
 const showForm = ref(false)
 const filterMember = ref('all')
 const dateFrom = ref('')
 const dateTo = ref('')
+const highlightedId = ref('')
 
 const filtered = computed(() => {
   let list = store.state.records
@@ -36,6 +40,33 @@ function onDelete(record: MedicalRecord) {
     store.deleteRecord(record.id)
   }
 }
+
+async function focusRecord(id: string) {
+  if (!id) return
+  await nextTick()
+  const el = document.getElementById(`record-${id}`)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    highlightedId.value = id
+    window.setTimeout(() => {
+      if (highlightedId.value === id) highlightedId.value = ''
+    }, 2500)
+  }
+}
+
+watch(
+  () => props.focusRecordId,
+  (id) => {
+    if (id) {
+      // Clear filters so the target record is guaranteed visible.
+      filterMember.value = 'all'
+      dateFrom.value = ''
+      dateTo.value = ''
+      focusRecord(id)
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -65,13 +96,28 @@ function onDelete(record: MedicalRecord) {
     </section>
 
     <div v-if="filtered.length" class="record-list">
-      <div v-for="r in filtered" :key="r.id" class="record-item card">
+      <div
+        v-for="r in filtered"
+        :id="`record-${r.id}`"
+        :key="r.id"
+        class="record-item card"
+        :class="{ highlighted: highlightedId === r.id }"
+      >
         <div class="record-head">
           <div class="record-title">
             <strong>{{ memberName(r.memberId) }}</strong>
             <span class="record-date">{{ formatDate(r.date) }}</span>
           </div>
-          <button type="button" class="btn btn-sm btn-danger-ghost" @click="onDelete(r)">删除</button>
+          <div class="record-btns">
+            <button
+              type="button"
+              class="btn btn-sm btn-info"
+              @click="emit('file-prescription', r)"
+            >
+              📄 归档处方
+            </button>
+            <button type="button" class="btn btn-sm btn-danger-ghost" @click="onDelete(r)">删除</button>
+          </div>
         </div>
         <div class="record-meta">
           <span v-if="r.hospital">🏥 {{ r.hospital }}</span>
@@ -126,6 +172,10 @@ function onDelete(record: MedicalRecord) {
   align-items: center;
   justify-content: space-between;
 }
+.record-btns {
+  display: flex;
+  gap: 8px;
+}
 .record-title {
   display: flex;
   align-items: center;
@@ -168,5 +218,9 @@ function onDelete(record: MedicalRecord) {
   border-radius: 8px;
   border: 1px solid var(--border-color);
   cursor: pointer;
+}
+.record-item.highlighted {
+  outline: 2px solid var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-bg);
 }
 </style>
