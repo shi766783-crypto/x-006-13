@@ -5,9 +5,10 @@ import MembersView from './views/MembersView.vue'
 import MedicinesView from './views/MedicinesView.vue'
 import MedicationView from './views/MedicationView.vue'
 import RecordsView from './views/RecordsView.vue'
+import PrescriptionsView from './views/PrescriptionsView.vue'
 import ProfileView from './views/ProfileView.vue'
 
-type ViewName = 'home' | 'members' | 'medicines' | 'medication' | 'records' | 'profile'
+type ViewName = 'home' | 'members' | 'medicines' | 'medication' | 'records' | 'prescriptions' | 'profile'
 
 const navItems: { key: ViewName; label: string; icon: string }[] = [
   { key: 'home', label: '首页', icon: '🏠' },
@@ -15,6 +16,7 @@ const navItems: { key: ViewName; label: string; icon: string }[] = [
   { key: 'medicines', label: '药品库存', icon: '💊' },
   { key: 'medication', label: '用药提醒', icon: '⏰' },
   { key: 'records', label: '就医记录', icon: '🏥' },
+  { key: 'prescriptions', label: '处方归档', icon: '📋' },
   { key: 'profile', label: '个人中心', icon: '🏆' },
 ]
 
@@ -24,6 +26,7 @@ const views: Record<ViewName, Component> = {
   medicines: MedicinesView,
   medication: MedicationView,
   records: RecordsView,
+  prescriptions: PrescriptionsView,
   profile: ProfileView,
 }
 

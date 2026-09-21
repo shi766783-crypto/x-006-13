@@ -10,6 +10,7 @@ import type {
   Medicine,
   MedicationLog,
   MedicationPlan,
+  Prescription,
   TodayDose,
 } from '../types'
 import { evaluateAchievements } from '../utils/achievements'
@@ -23,6 +24,7 @@ interface FamilyState {
   plans: MedicationPlan[]
   logs: MedicationLog[]
   records: MedicalRecord[]
+  prescriptions: Prescription[]
   unlockedAchievements: Record<string, number>
 }
 
@@ -33,6 +35,7 @@ function loadState(): FamilyState {
     plans: StorageService.loadPlans(),
     logs: StorageService.loadLogs(),
     records: StorageService.loadRecords(),
+    prescriptions: StorageService.loadPrescriptions(),
     unlockedAchievements: StorageService.loadAchievements(),
   }
 }
@@ -63,6 +66,7 @@ function createStore() {
     StorageService.savePlans(state.plans)
     StorageService.saveLogs(state.logs)
     StorageService.saveRecords(state.records)
+    StorageService.savePrescriptions(state.prescriptions)
     StorageService.saveAchievements(state.unlockedAchievements)
   }
 
@@ -83,6 +87,7 @@ function createStore() {
     state.plans = state.plans.filter((p) => p.memberId !== id)
     state.logs = state.logs.filter((l) => l.memberId !== id)
     state.records = state.records.filter((r) => r.memberId !== id)
+    state.prescriptions = state.prescriptions.filter((p) => p.memberId !== id)
     commit()
   }
 
@@ -119,6 +124,8 @@ function createStore() {
   function deleteMedicine(id: string) {
     state.medicines = state.medicines.filter((m) => m.id !== id)
     state.plans = state.plans.filter((p) => p.medicineId !== id)
+    // Prescriptions intentionally keep the dangling medicineId so the
+    // archive can flag the link as invalid instead of silently breaking.
     commit()
   }
 
@@ -174,6 +181,25 @@ function createStore() {
 
   function deleteRecord(id: string) {
     state.records = state.records.filter((r) => r.id !== id)
+    // Prescriptions intentionally keep the dangling recordId so the
+    // archive can flag the link as invalid instead of silently breaking.
+    commit()
+  }
+
+  // ---- prescriptions ----
+  function addPrescription(prescription: Omit<Prescription, 'id'>) {
+    state.prescriptions.push({ ...prescription, id: uid() })
+    commit()
+  }
+
+  function updatePrescription(id: string, patch: Partial<Prescription>) {
+    const prescription = state.prescriptions.find((p) => p.id === id)
+    if (prescription) Object.assign(prescription, patch)
+    commit()
+  }
+
+  function deletePrescription(id: string) {
+    state.prescriptions = state.prescriptions.filter((p) => p.id !== id)
     commit()
   }
 
@@ -278,6 +304,9 @@ function createStore() {
     logDose,
     addRecord,
     deleteRecord,
+    addPrescription,
+    updatePrescription,
+    deletePrescription,
     // derived
     expiredMedicines,
     expiringMedicines,

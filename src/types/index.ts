@@ -97,6 +97,29 @@ export interface MedicalRecord {
   attachments: string[]
 }
 
+/**
+ * Archived long-term prescription / doctor's order.
+ * Links (`recordId` / `medicineId`) are deliberately kept when the target is
+ * deleted so the archive can flag them as invalid instead of silently breaking.
+ */
+export interface Prescription {
+  id: string
+  memberId: string
+  /** Linked medical record; '' = unlinked. A dangling id means the record was deleted. */
+  recordId: string
+  /** Linked inventory medicine; '' = unlinked. A dangling id means the medicine was deleted. */
+  medicineId: string
+  /** Archived copy of the medicine name, kept readable even if the link breaks. */
+  medicineName: string
+  /** 用法用量，如：每日3次，每次1片 */
+  dosage: string
+  startDate: string
+  /** 服用周期结束日；'' = 长期服用 */
+  endDate: string
+  /** 开具医院 */
+  hospital: string
+}
+
 /** A single dose due today, resolved from a plan + member + medicine. */
 export interface TodayDose {
   planId: string

@@ -26,6 +26,11 @@ function memberName(id: string) {
   return store.getMember(id)?.name ?? '—'
 }
 
+/** Archived prescriptions linked to a given medical record. */
+function linkedPrescriptions(recordId: string) {
+  return store.state.prescriptions.filter((p) => p.recordId === recordId)
+}
+
 function onSave(data: Omit<MedicalRecord, 'id'>) {
   store.addRecord(data)
   showForm.value = false
@@ -81,6 +86,12 @@ function onDelete(record: MedicalRecord) {
         </div>
         <div v-if="r.diagnosis" class="record-field"><label>诊断：</label>{{ r.diagnosis }}</div>
         <div v-if="r.prescription" class="record-field"><label>处方：</label>{{ r.prescription }}</div>
+        <div v-if="linkedPrescriptions(r.id).length" class="record-field">
+          <label>归档处方：</label>
+          <span v-for="p in linkedPrescriptions(r.id)" :key="p.id" class="rx-chip">
+            📋 {{ p.medicineName }}
+          </span>
+        </div>
         <div v-if="r.remark" class="record-field"><label>备注：</label>{{ r.remark }}</div>
         <div v-if="r.attachments.length" class="record-attach">
           <img v-for="(img, i) in r.attachments" :key="i" :src="img" alt="" />
@@ -154,6 +165,15 @@ function onDelete(record: MedicalRecord) {
 }
 .record-field label {
   color: var(--text-secondary);
+}
+.rx-chip {
+  display: inline-block;
+  background: var(--accent-bg);
+  color: var(--accent-color);
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  margin-right: 6px;
 }
 .record-attach {
   display: flex;
